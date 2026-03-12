@@ -1,0 +1,60 @@
+from sentence_transformers import SentenceTransformer
+import numpy as np
+from groq import Groq
+
+# Step 1 - Our documents (knowledge base)
+documents = [
+    "Dogs are loyal animals and make great pets. They come in many breeds.",
+    "Python is a popular programming language for AI",
+    "The Eiffel Tower is located in Paris, France",
+    "Machine learning uses data to train models",
+    "Cats are independent animals that love to sleep"
+]
+
+# Step 2 - Load embedding model and embed documents
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+document_vectors = embedding_model.encode(documents)
+
+# Step 3 - Cosine similarity function
+def cosine_similarity(a, b):
+    dot = np.dot(a, b)
+    magnitude_a = np.linalg.norm(a)
+    magnitude_b = np.linalg.norm(b)
+    return dot / (magnitude_a * magnitude_b)
+
+# Step 4 - Search function
+def search(question, document_vectors, documents, top_k=2):
+    question_vector = embedding_model.encode([question])[0]
+    scores = []
+    for i, doc_vector in enumerate(document_vectors):
+        score = cosine_similarity(question_vector, doc_vector)
+        scores.append((score, documents[i]))
+    scores.sort(reverse=True)
+    return scores[:top_k]
+
+# Step 5 - Connect to Groq
+client = Groq(api_key="your_api_key_here")
+
+# Step 6 - RAG function
+def ask(question):
+    relevant_docs = search(question, document_vectors, documents)
+    context = "\n".join([doc for score, doc in relevant_docs])
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": f"Answer the question using only this context:\n{context}"
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+    )
+    return response.choices[0].message.content
+
+# Step 7 - Ask a question
+question = "What makes dogs special?"
+print("Question:", question)
+print("\nAnswer:", ask(question))
