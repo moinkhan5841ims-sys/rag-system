@@ -40,7 +40,7 @@ def ask(question):
     relevant_docs = search(question, document_vectors, documents)
     context = "\n".join([doc for score, doc in relevant_docs])
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="llama-3.1-8b-instant",
         messages=[
             {
                 "role": "system",
